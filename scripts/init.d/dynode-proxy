@@ -1,0 +1,102 @@
+#!/bin/bash
+#
+# dynode-proxy
+#
+# chkconfig:   2345 80 20
+# description: Node.js proxy server with dynamic routing support
+# config:      /etc/dynode-proxy/proxy.cfg
+# pidfile:     /var/run/dynode-proxy.pid
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ "$NETWORKING" = "no" ] && exit 0
+
+nodesysmodulespath="/usr/lib/node_modules"
+cfgfile="/etc/dynode-proxy/proxy-config.json"
+nodeserver="/usr/lib/node_modules/dynode-proxy/bin/web-proxy.js"
+cmd="node-supervisor -w $nodeserver -- $nodeserver --config $cfgfile"
+prog="web-proxy.js"
+lockfile="/var/lock/subsys/dynode-proxy"
+pidfile="/var/run/dynode-proxy-supervisor.pid"
+childpidfile="/var/run/dynode-proxy.pid"
+logfile="/var/log/dynode-proxy/supervisor_log"
+
+start() {
+    echo -n $"Starting dynode-proxy: "
+    chown apache.apache /var/log/dynode-proxy/*.log
+    export NODE_PATH="$nodesysmodulespath"
+    nohup $cmd &> $logfile &
+    echo $! > $pidfile
+    retval=$?
+    [ $retval -eq 0 ] && touch $lockfile && echo_success
+    echo
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping dynode-proxy: "
+    killproc -p $pidfile $prog 
+    retval=$?
+    # If pid's whacked, we need to send a HUP.
+    pids=$(ps -U root -opid,args | grep "$nodeserver" | grep -v 'grep' |   \
+                                   awk '{print $1}' | tr '\n' ' ')
+    if [ -n "$pids" ]; then
+       kill -HUP $pids
+       retval=$?
+    fi
+
+    [ $retval -eq 0 ] && rm -f $lockfile && echo_success
+    echo
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    echo -n $"Reloading dynode-proxy: "
+    childpid=$(<$childpidfile)
+    kill -HUP $childpid
+    retval=$?
+    [ $retval -eq 0 ] && echo_success
+    echo
+    return $retval
+}
+
+case "$1" in
+    start)
+        if ! test -f $pidfile  ||  ! status -p $pidfile $prog; then
+           start
+        else
+           echo "$prog already running. supervisor pid = `cat $pidfile`"
+        fi
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    reload)
+        reload
+        ;;
+    status)
+        status -p $pidfile $prog
+        ;;
+    condrestart|try-restart)
+  	if [ -f $lockfile ] 
+        then
+            restart
+        fi
+	;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|reload}"
+        exit 2
+esac

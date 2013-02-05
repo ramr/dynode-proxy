@@ -1,4 +1,4 @@
-node-proxy
-==========
+dynode-proxy
+============
 
-Node.js based fast switching proxy server
+Node.js based proxy server w/ dynamic routing support.

@@ -1,0 +1,12 @@
+/var/log/dynode-proxy/*.log {
+    daily
+    missingok
+    notifempty
+    compress
+    nocreate
+    maxage 30
+    size 20M
+    rotate 5
+    sharedscripts
+}
+

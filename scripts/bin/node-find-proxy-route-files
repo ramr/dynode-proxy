@@ -1,0 +1,13 @@
+#!/bin/bash
+
+cfgdir="/etc/httpd/conf.d/dynode-proxy/"
+
+#  For OpenShift, use the configured GEAR_BASE_DIR otherwise use
+#  /etc/httpd/conf.d
+if [ -f "/etc/openshift/node.conf" ]; then
+   source /etc/openshift/node.conf
+   cfgdir="${GEAR_BASE_DIR}/.httpd.d/"
+fi
+
+exec find $cfgdir -name 'route*.json' 2> /dev/null
+
